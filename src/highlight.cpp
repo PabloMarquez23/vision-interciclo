@@ -3,43 +3,74 @@
 #include <iostream>
 
 using namespace cv;
-using std::cout;
-using std::cerr;
-using std::endl;
 
 // ==========================================================
-// IMPLEMENTACIÓN DE generateAnatomicalMasksHU (LA FUNCIÓN FALTANTE EN EL LINKER)
+// IMPLEMENTACIÓN DE generateAnatomicalMasksHU (CON LIMPIEZA DE RUIDO)
 // ==========================================================
 AnatomyMasks generateAnatomicalMasksHU(const Mat& hu32f) {
     AnatomyMasks m;
 
-    // Rangos de HU
-    m.fat = (hu32f >= -190.f) & (hu32f <= -30.f);
-    m.muscle_tendon = (hu32f >= 10.f) & (hu32f <= 120.f);
-    m.bones = hu32f >= 200.f;
+    // 1. UMBRALIZACIÓN (Thresholding)
+    // Usamos rangos estándar para tomografía
+    Mat raw_fat    = (hu32f >= -190.f) & (hu32f <= -30.f);
+    Mat raw_muscle = (hu32f >= 10.f)  & (hu32f <= 120.f);
+    Mat raw_bone   = (hu32f >= 200.f);
 
-    // Convertir las máscaras booleanas a CV_8U (0, 255)
-    m.fat.convertTo(m.fat, CV_8U, 255);
-    m.muscle_tendon.convertTo(m.muscle_tendon, CV_8U, 255);
-    m.bones.convertTo(m.bones, CV_8U, 255);
+    // Convertir a formato de imagen (0-255)
+    raw_fat.convertTo(m.fat, CV_8U, 255);
+    raw_muscle.convertTo(m.muscle_tendon, CV_8U, 255);
+    raw_bone.convertTo(m.bones, CV_8U, 255);
+
+    // 2. LIMPIEZA MORFOLÓGICA (CRÍTICO PARA MEJORAR VISUALIZACIÓN)
+    // Esto elimina los "puntitos" sueltos y rellena huecos pequeños
     
+    // Elemento estructurante (forma del pincel de limpieza)
+    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
+    Mat kernelLg = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
+
+    // Hueso: Cierre para rellenar poros pequeños
+    morphologyEx(m.bones, m.bones, MORPH_CLOSE, kernel);
+
+    // Músculo: Apertura para quitar ruido blanco (puntos aislados) y Cierre para unir fibras
+    morphologyEx(m.muscle_tendon, m.muscle_tendon, MORPH_OPEN, kernel);
+    morphologyEx(m.muscle_tendon, m.muscle_tendon, MORPH_CLOSE, kernelLg);
+
+    // Grasa: Apertura para quitar ruido
+    morphologyEx(m.fat, m.fat, MORPH_OPEN, kernel);
+
+    // 3. EXCLUSIÓN JERÁRQUICA (Limpieza lógica)
+    // El hueso tiene prioridad sobre el músculo
+    m.muscle_tendon.setTo(0, m.bones);
+    
+    // El músculo tiene prioridad sobre la grasa
+    m.fat.setTo(0, m.muscle_tendon);
+    m.fat.setTo(0, m.bones);
+
     return m;
 }
 
 
 // ==========================================================
-// IMPLEMENTACIÓN DE colorizeAndOverlay (Superposición transparente con colores sólidos)
+// IMPLEMENTACIÓN DE colorizeAndOverlay (COLORES VIVOS TIPO NEÓN)
 // ==========================================================
 Mat colorizeAndOverlay(const Mat& slice8u, const AnatomyMasks& m) {
     Mat base_bgr;
     if (slice8u.channels() == 1) cvtColor(slice8u, base_bgr, COLOR_GRAY2BGR); 
     else base_bgr = slice8u.clone();
 
-    // Definición de Colores BGR (Hueso celeste)
-    const Scalar COLOR_FAT = Scalar(255, 128,   0); 
-    const Scalar COLOR_MUSCLE = Scalar(  0,  69, 255); 
-    const Scalar COLOR_BONE = Scalar(255, 100,   0); 
+    // --- PALETA DE COLORES DE ALTO CONTRASTE ---
+    // Usamos colores brillantes para que resalten sobre el gris
+    
+    // Hueso: CYAN BRILLANTE (Azul eléctrico)
+    const Scalar COLOR_BONE = Scalar(255, 255, 0); // BGR: Azul+Verde
+    
+    // Músculo: MAGENTA / ROSA FUERTE (Contrasta bien con el cyan)
+    const Scalar COLOR_MUSCLE = Scalar(128, 0, 255); // BGR: Azul+Rojo
+    
+    // Grasa: AMARILLO LIMA
+    const Scalar COLOR_FAT = Scalar(0, 255, 255); // BGR: Verde+Rojo
 
+    // Crear capas de color
     Mat colored_fat = Mat::zeros(base_bgr.size(), base_bgr.type());
     colored_fat.setTo(COLOR_FAT, m.fat);
 
@@ -51,14 +82,20 @@ Mat colorizeAndOverlay(const Mat& slice8u, const AnatomyMasks& m) {
 
     Mat final_overlay = base_bgr.clone();
 
-    // Transparencia (puedes ajustar alpha, 0.6 = 60% color)
-    double alpha = 0.6; 
-    double beta = 1.0 - alpha; 
+    // --- MEZCLA INTELIGENTE ---
+    // Aumentamos la opacidad (alpha) para que los colores se vean más sólidos
+    double alpha = 0.65; // 65% Color
+    double beta = 1.0;   // 100% Imagen de fondo (para no oscurecerla)
 
-    // Superponemos las máscaras de forma jerárquica
-    addWeighted(final_overlay, beta, colored_fat, alpha, 0, final_overlay, final_overlay.depth());
-    addWeighted(final_overlay, beta, colored_muscle, alpha, 0, final_overlay, final_overlay.depth());
-    addWeighted(final_overlay, beta, colored_bone, alpha, 0, final_overlay, final_overlay.depth());
+    // Usamos addWeighted para mezclar preservando el brillo
+    if (countNonZero(m.fat) > 0)
+        addWeighted(final_overlay, 1.0, colored_fat, alpha, 0, final_overlay);
+        
+    if (countNonZero(m.muscle_tendon) > 0)
+        addWeighted(final_overlay, 1.0, colored_muscle, alpha, 0, final_overlay);
+        
+    if (countNonZero(m.bones) > 0)
+        addWeighted(final_overlay, 1.0, colored_bone, alpha, 0, final_overlay);
 
     return final_overlay;
 }
