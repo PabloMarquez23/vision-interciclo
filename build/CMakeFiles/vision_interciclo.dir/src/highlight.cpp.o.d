@@ -2,6 +2,7 @@ CMakeFiles/vision_interciclo.dir/src/highlight.cpp.o: \
  /home/pablomar/vision-interciclo/src/highlight.cpp \
  /usr/include/stdc-predef.h \
  /home/pablomar/vision-interciclo/src/highlight.hpp \
+ /opt/opencv-4.10/include/opencv4/opencv2/core/core.hpp \
  /opt/opencv-4.10/include/opencv4/opencv2/core.hpp \
  /opt/opencv-4.10/include/opencv4/opencv2/core/cvdef.h \
  /opt/opencv-4.10/include/opencv4/opencv2/core/version.hpp \
@@ -273,111 +274,6 @@ CMakeFiles/vision_interciclo.dir/src/highlight.cpp.o: \
  /opt/opencv-4.10/include/opencv4/opencv2/core/optim.hpp \
  /opt/opencv-4.10/include/opencv4/opencv2/core/ovx.hpp \
  /opt/opencv-4.10/include/opencv4/opencv2/core/cvdef.h \
- /home/pablomar/vision-interciclo/src/processing.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/opencv.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/calib3d.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/features2d.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/miniflann.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/defines.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/config.h \
- /opt/opencv-4.10/include/opencv4/opencv2/core/affine.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/core/utils/logger.hpp \
- /usr/include/c++/13/iostream \
- /opt/opencv-4.10/include/opencv4/opencv2/core/utils/logger.defines.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/core/utils/logtag.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/dnn.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/dnn/dnn.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/core/async.hpp \
- /usr/include/c++/13/chrono \
- /opt/opencv-4.10/include/opencv4/opencv2/dnn/version.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/dnn/dict.hpp \
- /usr/include/c++/13/map /usr/include/c++/13/bits/stl_tree.h \
- /usr/include/c++/13/bits/stl_map.h \
- /usr/include/c++/13/bits/stl_multimap.h \
- /opt/opencv-4.10/include/opencv4/opencv2/dnn/layer.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/dnn/dnn.inl.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/dnn/utils/inference_engine.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/dnn/dnn.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/flann.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/flann_base.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/general.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/matrix.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/params.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/any.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/defines.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/saving.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/nn_index.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/result_set.h \
- /usr/include/c++/13/set /usr/include/c++/13/bits/stl_set.h \
- /usr/include/c++/13/bits/stl_multiset.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/all_indices.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/kdtree_index.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/dynamic_bitset.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/dist.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/heap.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/allocator.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/random.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/kdtree_single_index.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/kmeans_index.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/logger.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/composite_index.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/linear_index.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/hierarchical_clustering_index.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/lsh_index.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/lsh_table.h \
- /usr/include/c++/13/iomanip /usr/include/c++/13/locale \
- /usr/include/c++/13/bits/locale_facets_nonio.h \
- /usr/include/x86_64-linux-gnu/c++/13/bits/time_members.h \
- /usr/include/x86_64-linux-gnu/c++/13/bits/messages_members.h \
- /usr/include/libintl.h /usr/include/c++/13/bits/codecvt.h \
- /usr/include/c++/13/bits/locale_facets_nonio.tcc \
- /usr/include/c++/13/bits/locale_conv.h \
- /usr/include/c++/13/bits/quoted_string.h /usr/include/c++/13/math.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/autotuned_index.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/ground_truth.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/index_testing.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/timer.h \
- /opt/opencv-4.10/include/opencv4/opencv2/flann/sampling.h \
- /opt/opencv-4.10/include/opencv4/opencv2/highgui.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/imgcodecs.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/videoio.hpp \
  /opt/opencv-4.10/include/opencv4/opencv2/imgproc.hpp \
  /opt/opencv-4.10/include/opencv4/opencv2/imgproc/segmentation.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/ml.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/ml/ml.inl.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/objdetect.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/objdetect/aruco_detector.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/objdetect/aruco_dictionary.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/objdetect/aruco_board.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/objdetect/graphical_code_detector.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/objdetect/detection_based_tracker.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/objdetect/face.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/objdetect/charuco_detector.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/objdetect/barcode.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/photo.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/warpers.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/warpers.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/core/cuda.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/core/cuda_types.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/core/cuda.inl.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/warpers_inl.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/warpers.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/matchers.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/motion_estimators.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/matchers.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/util.hpp \
- /usr/include/c++/13/list /usr/include/c++/13/bits/stl_list.h \
- /usr/include/c++/13/bits/list.tcc \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/util_inl.hpp \
- /usr/include/c++/13/queue /usr/include/c++/13/deque \
- /usr/include/c++/13/bits/stl_deque.h /usr/include/c++/13/bits/deque.tcc \
- /usr/include/c++/13/bits/stl_queue.h \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/camera.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/exposure_compensate.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/seam_finders.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/blenders.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/stitching/detail/camera.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/video.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/video/tracking.hpp \
- /opt/opencv-4.10/include/opencv4/opencv2/video/background_segm.hpp
+ /usr/include/c++/13/iostream

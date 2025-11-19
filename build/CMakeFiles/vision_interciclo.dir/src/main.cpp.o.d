@@ -399,6 +399,7 @@ CMakeFiles/vision_interciclo.dir/src/main.cpp.o: \
  /opt/opencv-4.10/include/opencv4/opencv2/core/ovx.hpp \
  /opt/opencv-4.10/include/opencv4/opencv2/core/cvdef.h \
  /home/pablomar/vision-interciclo/src/highlight.hpp \
+ /opt/opencv-4.10/include/opencv4/opencv2/core/core.hpp \
  /home/pablomar/vision-interciclo/src/dnn_denoising.hpp \
  /opt/opencv-4.10/include/opencv4/opencv2/opencv.hpp \
  /opt/opencv-4.10/include/opencv4/opencv2/calib3d.hpp \

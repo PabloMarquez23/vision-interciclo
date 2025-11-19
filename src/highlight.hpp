@@ -1,31 +1,18 @@
-// src/highlight.hpp
-#pragma once
-#include <opencv2/core.hpp>
+#ifndef HIGHLIGHT_HPP
+#define HIGHLIGHT_HPP
 
-using namespace cv;
+#include <opencv2/core/core.hpp> 
 
-// ===== Resultados intermedios (debug/visual) =====
-struct HighlightResult {
-  cv::Mat eq;
-  cv::Mat denoised;
-  cv::Mat edges;
-  cv::Mat mask;
-  cv::Mat overlay;
-  cv::Mat finalVis;
-};
-
-// ===== Máscaras anatómicas =====
+// Estructura para contener las 3 máscaras de tejidos
 struct AnatomyMasks {
-  cv::Mat fat;            // Grasa
-  cv::Mat muscle_tendon;  // Músculo / tendón
-  cv::Mat bones;          // Hueso
+    cv::Mat fat;
+    cv::Mat muscle_tendon;
+    cv::Mat bones;
 };
 
-// Intermedios (gris 8-bit)
-HighlightResult highlightROI(const cv::Mat& gray);
-
-// Segmentación principal en HU reales (CV_32F en unidades HU)
+// Declaraciones de funciones (Firmas)
+cv::Mat huTo8u(const cv::Mat& hu32f, float window_center, float window_width);
 AnatomyMasks generateAnatomicalMasksHU(const cv::Mat& hu32f);
-
-// Overlay coloreado sobre una imagen 8-bit (BGR o GRAY)
 cv::Mat colorizeAndOverlay(const cv::Mat& slice8u, const AnatomyMasks& m);
+
+#endif // HIGHLIGHT_HPP
