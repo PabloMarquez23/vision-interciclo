@@ -1,4 +1,3 @@
-// src/main.cpp - VERSIÓN FINAL CON MODELO COMPATIBLE 17 CAPAS
 #include "itk_loader.hpp"
 #include "itk_opencv_bridge.hpp"
 #include "highlight.hpp"
@@ -9,7 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/photo.hpp> // Para NLMeans por si acaso
+#include <opencv2/photo.hpp> 
 
 using namespace cv;
 using std::cout;
@@ -26,91 +25,132 @@ int main(int argc, char** argv) {
   const unsigned int zIndex  = static_cast<unsigned int>(std::stoul(argv[2]));
 
   DnnDenoiser* denoiserPtr = nullptr;
-  bool useDNN = false;
   
   try {
-    // 1. CARGAR LA RED NEURONAL (DnCNN Compatible)
+    // ---------------------------------------------------------
+    // 0. CARGAR DNN (Solo intentamos cargar, no usamos aún)
+    // ---------------------------------------------------------
     try {
-      // Nombre del archivo generado con PyTorch antiguo
-      denoiserPtr = new DnnDenoiser("../models/dncnn_compatible.onnx"); 
-      cout << "[INFO] Modelo DnCNN (17 capas) cargado correctamente.\n";
-      useDNN = true;
-
+        denoiserPtr = new DnnDenoiser("../models/dncnn_compatible.onnx"); 
+        cout << "[INIT] Modelo DnCNN cargado correctamente.\n";
     } catch (const cv::Exception& e) {
-      cerr << "[ALERTA] El DNN falló (esto no debería pasar con el modelo compatible): " << e.what() << "\n";
-      if (denoiserPtr) { delete denoiserPtr; denoiserPtr = nullptr; }
-      useDNN = false;
+        cerr << "[ALERTA] Fallo carga DNN. Se usará NLMeans como método avanzado.\n";
     }
     
-    // 2) Carga volumen y extrae corte ITK
-    cout << "Cargando DICOM series desde: " << dicomDir << " (Slice Z=" << zIndex << ")\n";
+    // ---------------------------------------------------------
+    // 1. PREPARAR DATOS (HU CRUDOS)
+    // ---------------------------------------------------------
+    cout << "[DATA] Cargando DICOM...\n";
     auto vol   = loadDicomSeries(dicomDir);
     auto slice = extractSlice(vol.image, zIndex);
-
-    // 3) HU (float) desde ITK
+    
     double huMin = 0.0, huMax = 0.0;
-    Mat hu32f = itk2cv32fHU(slice, &huMin, &huMax);
-    if (hu32f.empty()) CV_Error(Error::StsError, "hu32f vacío");
-    
-    // 4) Generar imagen 8-bit base (ORIGINAL CON RUIDO)
-    Mat g8_base = huTo8u(hu32f, 40.0f, 400.0f);
+    Mat hu32f_raw = itk2cv32fHU(slice, &huMin, &huMax); 
+    if (hu32f_raw.empty()) CV_Error(Error::StsError, "hu32f vacío");
 
-    // ==========================================================
-    // EVIDENCIA DE REDUCCIÓN DE RUIDO
-    // ==========================================================
-    
-    // A) CLÁSICA (Gaussiano)
-    Mat g8_classical;
-    GaussianBlur(g8_base, g8_classical, Size(5, 5), 0, 0); 
 
-    // B) AVANZADA (DNN Real)
-    Mat g8_advanced;
+    // =========================================================
+    // FLUJO 1: ORIGINAL (CONTROL) - SIN PROCESAMIENTO
+    // =========================================================
+    cout << "--- Procesando Flujo 1: Original ---\n";
+    // A. Imagen Visual (Sin reducción de ruido)
+    Mat img_visual_1 = huTo8u(hu32f_raw, 40.0f, 400.0f);
     
-    if (useDNN && denoiserPtr) {
-        // ¡AQUÍ DEBERÍA ENTRAR AHORA!
-        cout << "[PROCESANDO] Ejecutando reducción de ruido con Deep Learning (DnCNN)...\n";
-        g8_advanced = denoiserPtr->denoise(g8_base); 
+    // B. Segmentación (Sobre datos crudos)
+    // Esto debería verse "sucio" si highlight.cpp no tiene suavizado interno
+    AnatomyMasks masks_1 = generateAnatomicalMasksHU(hu32f_raw);
+    Mat overlay_1 = colorizeAndOverlay(img_visual_1, masks_1);
+
+
+    // =========================================================
+    // FLUJO 2: MÉTODO CLÁSICO (GAUSSIANO)
+    // =========================================================
+    cout << "--- Procesando Flujo 2: Clásico (Gauss) ---\n";
+    
+    // A. Imagen Visual (Suavizada con Gaussiano)
+    Mat img_visual_2;
+    GaussianBlur(img_visual_1, img_visual_2, Size(5, 5), 1.0);
+    
+    // B. Segmentación (Sobre datos HU suavizados con Gaussiano)
+    Mat hu32f_gauss;
+    GaussianBlur(hu32f_raw, hu32f_gauss, Size(5, 5), 1.0); // Suavizamos los datos médicos
+    AnatomyMasks masks_2 = generateAnatomicalMasksHU(hu32f_gauss);
+    Mat overlay_2 = colorizeAndOverlay(img_visual_2, masks_2);
+
+
+    // =========================================================
+    // FLUJO 3: MÉTODO AVANZADO (DNN o NLMeans)
+    // =========================================================
+    cout << "--- Procesando Flujo 3: Avanzado (DNN) ---\n";
+    Mat img_visual_3;
+    Mat hu32f_dnn;
+
+    if (denoiserPtr) {
+        // SI EL DNN FUNCIONA:
+        cout << "[DNN] Usando Red Neuronal para limpiar...\n";
+        
+        // A. Imagen Visual
+        img_visual_3 = denoiserPtr->denoise(img_visual_1);
+
+        // B. Datos Médicos (HU)
+        // Truco: Normalizamos HU a 0-1, pasamos por la red, y des-normalizamos
+        Mat hu_norm;
+        normalize(hu32f_raw, hu_norm, 0, 255, NORM_MINMAX, CV_8U);
+        Mat hu_clean_8u = denoiserPtr->denoise(hu_norm);
+        hu_clean_8u.convertTo(hu32f_dnn, CV_32F);
+        // Recuperar escala aproximada HU
+        normalize(hu32f_dnn, hu32f_dnn, huMin, huMax, NORM_MINMAX);
+
     } else {
-        // Fallback solo si algo salió muy mal
-        cout << "[PROCESANDO] Usando NLMeans (Fallback)...\n";
-        fastNlMeansDenoising(g8_base, g8_advanced, 10, 7, 21);
+        // SI EL DNN FALLA (Fallback a NLMeans):
+        cout << "[FALLBACK] Usando NLMeans (Avanzado)...\n";
+        
+        // A. Imagen Visual
+        fastNlMeansDenoising(img_visual_1, img_visual_3, 10, 7, 21);
+        
+        // B. Datos Médicos (HU) - Aplicamos Gaussiano suave como proxy avanzado para segmentar
+        // (NLMeans es lento en floats, usamos una aproximación de alta calidad)
+        GaussianBlur(hu32f_raw, hu32f_dnn, Size(3, 3), 0.8); 
     }
 
-    // Usamos la imagen limpia para el overlay
-    Mat g8 = g8_advanced; 
+    // B. Segmentación Avanzada
+    AnatomyMasks masks_3 = generateAnatomicalMasksHU(hu32f_dnn);
+    Mat overlay_3 = colorizeAndOverlay(img_visual_3, masks_3);
 
-    // 6) Segmentación en HU reales (Músculo/Grasa/Hueso - Usando suavizado interno)
-    AnatomyMasks anat = generateAnatomicalMasksHU(hu32f); 
-    Mat overlayAnat   = colorizeAndOverlay(g8, anat);
-    
-    // ... Estadísticas ...
-    Mat bodyMask = (hu32f > -300.f);
-    bodyMask.convertTo(bodyMask, CV_8U, 255);
-    const double bodyPx = (double)countNonZero(bodyMask);
-    
-    // Guardado
+
+    // =========================================================
+    // GUARDADO DE LAS 6 IMÁGENES
+    // =========================================================
     std::filesystem::create_directories("outputs/final");
     
-    imwrite("outputs/final/slice8u_0_original_noisy.png", g8_base); 
-    imwrite("outputs/final/slice8u_1_classical_gaussian.png", g8_classical); 
-    
-    // Esta imagen ahora será la producida por la IA Real
-    imwrite("outputs/final/slice8u_2_dnn_result.png", g8_advanced); 
-    
-    imwrite("outputs/final/overlay_anatomical_FINAL.png", overlayAnat);
-    
-    // Imprimir estadísticas
-    auto pct_in_body = [&](const Mat& m){
-      if (bodyPx < 1.0) return 0.0;
-      Mat inter; bitwise_and(m, bodyMask, inter);
-      return 100.0 * (double)countNonZero(inter) / bodyPx;
-    };
-    cout << "\n--- ESTADÍSTICAS ---\n";
-    cout << "Grasa: " << pct_in_body(anat.fat) << "% | Músculo: " << pct_in_body(anat.muscle_tendon) 
-         << "% | Hueso: " << pct_in_body(anat.bones) << "%\n";
+    // GRUPO A: IMÁGENES "LIMPIAS" (Sin segmentación)
+    imwrite("outputs/final/1_Visual_Original.png", img_visual_1);
+    imwrite("outputs/final/2_Visual_Clasico.png", img_visual_2);
+    imwrite("outputs/final/3_Visual_Avanzado.png", img_visual_3);
 
-    cout << "Guardado exitoso.\n";
-    imshow("Overlay Final", overlayAnat);
+    // GRUPO B: IMÁGENES SEGMENTADAS (Con colores)
+    imwrite("outputs/final/4_Overlay_Original.png", overlay_1);
+    imwrite("outputs/final/5_Overlay_Clasico.png", overlay_2);
+    imwrite("outputs/final/6_Overlay_Avanzado.png", overlay_3);
+
+    cout << "\n========================================================\n";
+    cout << "¡GENERACIÓN EXITOSA! Revisa la carpeta outputs/final/\n";
+    cout << "--------------------------------------------------------\n";
+    cout << "1. Visual Original  |  4. Segmentacion Original (Mala)\n";
+    cout << "2. Visual Clasico   |  5. Segmentacion Clasica\n";
+    cout << "3. Visual Avanzado  |  6. Segmentacion Avanzada (DNN)\n";
+    cout << "========================================================\n";
+
+    // MOSTRAMOS LAS 6 VENTANAS
+    // (Las acomodamos para que no se solapen todas)
+    imshow("1. Visual Original", img_visual_1);
+    imshow("2. Visual Clasico", img_visual_2);
+    imshow("3. Visual Avanzado", img_visual_3);
+    
+    imshow("4. Overlay Original", overlay_1);
+    imshow("5. Overlay Clasico", overlay_2);
+    imshow("6. Overlay Avanzado", overlay_3);
+
     waitKey(0);
 
   } catch (const std::exception& e) {
