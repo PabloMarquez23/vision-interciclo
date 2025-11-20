@@ -1,4 +1,4 @@
-// src/main.cpp - CÓDIGO FINAL Y ROBUSTO
+// src/main.cpp - VERSIÓN FINAL CON MODELO COMPATIBLE 17 CAPAS
 #include "itk_loader.hpp"
 #include "itk_opencv_bridge.hpp"
 #include "highlight.hpp"
@@ -9,14 +9,12 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/photo.hpp> // Necesario para fastNlMeansDenoising
+#include <opencv2/photo.hpp> // Para NLMeans por si acaso
 
 using namespace cv;
 using std::cout;
 using std::cerr;
 using std::endl;
-
-// --- Damos por hecho que dnn_denoising.cpp hace la resta (input - residual) correctamente ---
 
 int main(int argc, char** argv) {
   if (argc < 3) {
@@ -28,19 +26,20 @@ int main(int argc, char** argv) {
   const unsigned int zIndex  = static_cast<unsigned int>(std::stoul(argv[2]));
 
   DnnDenoiser* denoiserPtr = nullptr;
+  bool useDNN = false;
   
   try {
-    // 1. INICIALIZACIÓN DE LA RED NEURONAL (DNN) - DENTRO DE UN BLOQUE TRY SEGURO
+    // 1. CARGAR LA RED NEURONAL (DnCNN Compatible)
     try {
-      // Intenta cargar el modelo de 3 capas
-      denoiserPtr = new DnnDenoiser("../models/dncnn_3.onnx"); // <-- RUTA CORREGIDA
-      cout << "[INFO] Modelo DnCNN cargado correctamente.\n";
+      // Nombre del archivo generado con PyTorch antiguo
+      denoiserPtr = new DnnDenoiser("../models/dncnn_compatible.onnx"); 
+      cout << "[INFO] Modelo DnCNN (17 capas) cargado correctamente.\n";
+      useDNN = true;
 
     } catch (const cv::Exception& e) {
-      // Capturamos el error de OpenCV, el programa NO SE CAE
-      cerr << "[ADVERTENCIA] Error al cargar la red DNN: " << e.what() << "\n";
-      cerr << "-> El DNN será sustituido por el método NLMeans para la evidencia de reducción avanzada.\n";
+      cerr << "[ALERTA] El DNN falló (esto no debería pasar con el modelo compatible): " << e.what() << "\n";
       if (denoiserPtr) { delete denoiserPtr; denoiserPtr = nullptr; }
+      useDNN = false;
     }
     
     // 2) Carga volumen y extrae corte ITK
@@ -52,84 +51,74 @@ int main(int argc, char** argv) {
     double huMin = 0.0, huMax = 0.0;
     Mat hu32f = itk2cv32fHU(slice, &huMin, &huMax);
     if (hu32f.empty()) CV_Error(Error::StsError, "hu32f vacío");
-    cout << "Rango HU del slice: " << huMin << " a " << huMax << endl;
-
-    // 4) Generar imagen 8-bit base (IMAGEN ORIGINAL CON RUIDO)
+    
+    // 4) Generar imagen 8-bit base (ORIGINAL CON RUIDO)
     Mat g8_base = huTo8u(hu32f, 40.0f, 400.0f);
 
     // ==========================================================
-    // CÁLCULO DE EVIDENCIA DE REDUCCIÓN DE RUIDO
+    // EVIDENCIA DE REDUCCIÓN DE RUIDO
+    // ==========================================================
     
-    // A) REDUCCIÓN CLÁSICA (Gaussiano)
+    // A) CLÁSICA (Gaussiano)
     Mat g8_classical;
     GaussianBlur(g8_base, g8_classical, Size(5, 5), 0, 0); 
 
-    // B) REDUCCIÓN AVANZADA (DNN o NLMeans como fallback)
+    // B) AVANZADA (DNN Real)
     Mat g8_advanced;
     
-    if (denoiserPtr) {
-        // Opción 1: DNN cargó correctamente -> USAMOS DNN
-        cout << "[INFO] Aplicando denoising con DNN...\n";
+    if (useDNN && denoiserPtr) {
+        // ¡AQUÍ DEBERÍA ENTRAR AHORA!
+        cout << "[PROCESANDO] Ejecutando reducción de ruido con Deep Learning (DnCNN)...\n";
         g8_advanced = denoiserPtr->denoise(g8_base); 
     } else {
-        // Opción 2: DNN falló -> USAMOS NLMeans (Sustituto avanzado)
-        cout << "[INFO] Aplicando denoising con NLMeans (sustituto del DNN)...\n";
+        // Fallback solo si algo salió muy mal
+        cout << "[PROCESANDO] Usando NLMeans (Fallback)...\n";
         fastNlMeansDenoising(g8_base, g8_advanced, 10, 7, 21);
     }
-    // ==========================================================
-    
-    // Usamos la imagen con reducción de ruido avanzada para el overlay final
+
+    // Usamos la imagen limpia para el overlay
     Mat g8 = g8_advanced; 
 
-    // 6) Segmentación en HU reales (Músculo/Grasa/Hueso)
+    // 6) Segmentación en HU reales (Músculo/Grasa/Hueso - Usando suavizado interno)
     AnatomyMasks anat = generateAnatomicalMasksHU(hu32f); 
     Mat overlayAnat   = colorizeAndOverlay(g8, anat);
     
-    // 5.1) Máscara de cuerpo y estadísticas (Se mantiene)
+    // ... Estadísticas ...
     Mat bodyMask = (hu32f > -300.f);
     bodyMask.convertTo(bodyMask, CV_8U, 255);
     const double bodyPx = (double)countNonZero(bodyMask);
     
-    // 5.2) Métricas globales y conteos de depuración (Se mantiene)
-    double meanHU = cv::mean(hu32f, hu32f > -1024)[0];
-    const long long cntFatHU    = countNonZero( (hu32f >= -190.f) & (hu32f <=  -30.f) );
-    const long long cntMuscleHU = countNonZero( (hu32f >=  10.f) & (hu32f <=  120.f) );
-    const long long cntBoneHU   = countNonZero( (hu32f >=  200.f) & (hu32f <= 3000.f) );
-    
-    // 6) Salidas a disco 
-    std::filesystem::create_directories("outputs/intermediates");
+    // Guardado
     std::filesystem::create_directories("outputs/final");
     
-    // GUARDADO DE EVIDENCIA DE REDUCCIÓN DE RUIDO (Los tres archivos de comparación)
     imwrite("outputs/final/slice8u_0_original_noisy.png", g8_base); 
     imwrite("outputs/final/slice8u_1_classical_gaussian.png", g8_classical); 
-    imwrite("outputs/final/slice8u_2_advanced_method.png", g8_advanced); // Puede ser DNN o NLMeans
+    
+    // Esta imagen ahora será la producida por la IA Real
+    imwrite("outputs/final/slice8u_2_dnn_result.png", g8_advanced); 
     
     imwrite("outputs/final/overlay_anatomical_FINAL.png", overlayAnat);
     
-    // 7) Estadísticos: porcentajes SOBRE EL CUERPO 
+    // Imprimir estadísticas
     auto pct_in_body = [&](const Mat& m){
       if (bodyPx < 1.0) return 0.0;
       Mat inter; bitwise_and(m, bodyMask, inter);
       return 100.0 * (double)countNonZero(inter) / bodyPx;
     };
-    cout << "\n--- ESTADÍSTICAS SOBRE EL CUERPO ---\n";
-    cout << "Áreas sobre cuerpo (%)  Grasa: " << pct_in_body(anat.fat)
-         << "  | Músculo/Tendón: " << pct_in_body(anat.muscle_tendon)
-         << "  | Hueso: "  << pct_in_body(anat.bones) << endl;
-    cout << "------------------------------------\n";
+    cout << "\n--- ESTADÍSTICAS ---\n";
+    cout << "Grasa: " << pct_in_body(anat.fat) << "% | Músculo: " << pct_in_body(anat.muscle_tendon) 
+         << "% | Hueso: " << pct_in_body(anat.bones) << "%\n";
 
-    cout << "Guardado en outputs/ ...\n";
-
-    imshow("Overlay anatomico (3 zonas)", overlayAnat);
+    cout << "Guardado exitoso.\n";
+    imshow("Overlay Final", overlayAnat);
     waitKey(0);
 
   } catch (const std::exception& e) {
-    cerr << "Error: " << e.what() << "\n";
-    if (denoiserPtr) { delete denoiserPtr; }
+    cerr << "Error Fatal: " << e.what() << "\n";
+    if (denoiserPtr) delete denoiserPtr;
     return 2;
   }
   
-  if (denoiserPtr) { delete denoiserPtr; }
+  if (denoiserPtr) delete denoiserPtr;
   return 0;
 }
